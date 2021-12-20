@@ -69,7 +69,7 @@ def encoder_helper(df, category_lst, response='Churn'):
     input:
             df: pandas dataframe
             category_lst: list of columns that contain categorical features
-            response: string of response name
+            response: string of new category name (category_response)
 
     output:
             df: pandas dataframe with new columns for
@@ -135,7 +135,8 @@ def classification_report_image(y_train,
     IMAGE_RESULTS_PATH = './images/results/'
 
     def plot_classification_report(y_train, y_test, y_train_preds, y_test_preds, title):
-        rc_fig = plt.rc('figure', figsize=(5, 5))
+        fig_report = plt.figure(figsize=(5, 5))
+        plt.rc('figure', figsize=(5, 5))
         plt.text(0.01, 1.25, title + str(' Train'),
                  {'fontsize': 10}, fontproperties='monospace')
         plt.text(0.01, 0.05, str(classification_report(y_test, y_test_preds)), {
@@ -145,7 +146,8 @@ def classification_report_image(y_train,
         plt.text(0.01, 0.7, str(classification_report(y_train, y_train_preds)), {
                  'fontsize': 10}, fontproperties='monospace')  # approach improved by OP -> monospace!
         plt.axis('off')
-        return rc_fig
+        plt.tight_layout()
+        return fig_report
 
     rvc_plot = plot_classification_report(
         y_train, y_test, y_train_preds_rf, y_test_preds_rf, 'Random Forest')
@@ -167,7 +169,30 @@ def feature_importance_plot(model, X_data, output_pth):
     output:
              None
     '''
-    pass
+    # Calculate feature importances
+    importances = model.feature_importances_
+    # Sort feature importances in descending order
+    indices = np.argsort(importances)[::-1]
+
+    # Rearrange feature names so they match the sorted feature importances
+    names = [X_data.columns[i] for i in indices]
+
+    # Create plot
+    plt.figure(figsize=(20, 5))
+
+    # Create plot title
+    plt.title("Feature Importance")
+    plt.ylabel('Importance')
+
+    # Add bars
+    plt.bar(range(X_data.shape[1]), importances[indices])
+
+    # Add feature names as x-axis labels
+    plt.xticks(range(X_data.shape[1]), names, rotation=90)
+
+    # Save plot
+    plt.tight_layout()
+    plt.savefig(output_pth + 'feature_importance.svg')
 
 
 def train_models(X_train, X_test, y_train, y_test):
@@ -212,7 +237,9 @@ def train_models(X_train, X_test, y_train, y_test):
                                 y_test_preds_lr,
                                 y_test_preds_rf)
 
-    # save models
+    # save best model
+    joblib.dump(cv_rfc.best_estimator_, './models/rfc_model.pkl')
+    joblib.dump(lrc, './models/logistic_model.pkl')
 
 
 if __name__ == '__main__':
@@ -226,3 +253,20 @@ if __name__ == '__main__':
         df)
 
     train_models(X_train, X_test, y_train, y_test)
+
+    # load models
+    rfc_model = joblib.load('./models/rfc_model.pkl')
+    lr_model = joblib.load('./models/logistic_model.pkl')
+
+    keep_cols = ['Customer_Age', 'Dependent_count', 'Months_on_book',
+                 'Total_Relationship_Count', 'Months_Inactive_12_mon',
+                 'Contacts_Count_12_mon', 'Credit_Limit', 'Total_Revolving_Bal',
+                 'Avg_Open_To_Buy', 'Total_Amt_Chng_Q4_Q1', 'Total_Trans_Amt',
+                 'Total_Trans_Ct', 'Total_Ct_Chng_Q4_Q1', 'Avg_Utilization_Ratio',
+                 'Gender_Churn', 'Education_Level_Churn', 'Marital_Status_Churn',
+                 'Income_Category_Churn', 'Card_Category_Churn']
+
+    X_data = pd.DataFrame()
+    X_data[keep_cols] = df[keep_cols]
+
+    feature_importance_plot(rfc_model, X_data, './images/results/')
