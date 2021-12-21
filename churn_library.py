@@ -87,7 +87,7 @@ def perform_feature_engineering(df, response='Churn'):
     '''
     input:
               df: pandas dataframe
-              response: string of response name [optional argument that could be used for naming index y column]
+              response: optional argument for naming churn index y column
 
     output:
               X_train: X training data
@@ -105,7 +105,9 @@ def perform_feature_engineering(df, response='Churn'):
 
     X = pd.DataFrame()
     X[keep_cols] = df[keep_cols]
-    y = df[response]
+    y = df['Churn']
+    if response != 'Churn':
+        y.rename(response)
     # train test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.3, random_state=42)
@@ -208,8 +210,8 @@ def train_models(X_train, X_test, y_train, y_test):
     '''
 
     # grid search
-    rfc = RandomForestClassifier(random_state=42)
-    lrc = LogisticRegression()
+    rfc = RandomForestClassifier(random_state=42, verbose=True)
+    lrc = LogisticRegression(verbose=True)
 
     param_grid = {
         'n_estimators': [200, 500],

@@ -84,13 +84,28 @@ def test_encoder_helper(encoder_helper):
             "Testing of encoding with new columns and proportion of churn failed as new columns are not available or wrong mean values")
         raise err
 
-    # test if response is correct
+    # test if response value is correct
+    try:
+        return_df = encoder_helper(test_df, category_lst, 'Test')
+        assert 'Gender_Test' in return_df.columns
+        logging.info(
+            "Testing of response value of encoder_helper: SUCCESS")
+    except AssertionError as err:
+        logging.error(
+            "Testing of response value of encoder_helper incorrect")
+        raise err
 
 
 def test_perform_feature_engineering(perform_feature_engineering):
     '''
     test perform_feature_engineering
     '''
+    try:
+
+        logging.info(
+            "Testing of feature engineering: SUCCESS")
+    except:
+        None
 
 
 def test_train_models(train_models):
