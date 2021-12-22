@@ -1,4 +1,9 @@
-# library doc string
+"""
+Different functions to predict customer churn
+
+author: bjoern
+date: 22.12.21
+"""
 
 
 from sklearn.metrics import plot_roc_curve, classification_report
@@ -6,9 +11,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import normalize
-import pickle
-import shap
 import joblib
 import pandas as pd
 import numpy as np
@@ -87,7 +89,7 @@ def perform_feature_engineering(df, response='Churn'):
     '''
     input:
               df: pandas dataframe
-              response: optional argument for naming churn index y column
+              response: optional argument for index y column
 
     output:
               X_train: X training data
@@ -95,19 +97,9 @@ def perform_feature_engineering(df, response='Churn'):
               y_train: y training data
               y_test: y testing data
     '''
-    keep_cols = ['Customer_Age', 'Dependent_count', 'Months_on_book',
-                 'Total_Relationship_Count', 'Months_Inactive_12_mon',
-                 'Contacts_Count_12_mon', 'Credit_Limit', 'Total_Revolving_Bal',
-                 'Avg_Open_To_Buy', 'Total_Amt_Chng_Q4_Q1', 'Total_Trans_Amt',
-                 'Total_Trans_Ct', 'Total_Ct_Chng_Q4_Q1', 'Avg_Utilization_Ratio',
-                 'Gender_Churn', 'Education_Level_Churn', 'Marital_Status_Churn',
-                 'Income_Category_Churn', 'Card_Category_Churn']
-
     X = pd.DataFrame()
-    X[keep_cols] = df[keep_cols]
-    y = df['Churn']
-    if response != 'Churn':
-        y.rename(response)
+    X = df.drop(response, 1)
+    y = df[response]
     # train test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.3, random_state=42)
@@ -136,17 +128,22 @@ def classification_report_image(y_train,
     '''
     IMAGE_RESULTS_PATH = './images/results/'
 
-    def plot_classification_report(y_train, y_test, y_train_preds, y_test_preds, title):
+    def plot_classification_report(
+            y_train,
+            y_test,
+            y_train_preds,
+            y_test_preds,
+            title):
         fig_report = plt.figure(figsize=(5, 5))
         plt.rc('figure', figsize=(5, 5))
         plt.text(0.01, 1.25, title + str(' Train'),
                  {'fontsize': 10}, fontproperties='monospace')
         plt.text(0.01, 0.05, str(classification_report(y_test, y_test_preds)), {
-                 'fontsize': 10}, fontproperties='monospace')  # approach improved by OP -> monospace!
+                 'fontsize': 10}, fontproperties='monospace') 
         plt.text(0.01, 0.6, title + str(' Test'),
                  {'fontsize': 10}, fontproperties='monospace')
         plt.text(0.01, 0.7, str(classification_report(y_train, y_train_preds)), {
-                 'fontsize': 10}, fontproperties='monospace')  # approach improved by OP -> monospace!
+                 'fontsize': 10}, fontproperties='monospace')
         plt.axis('off')
         plt.tight_layout()
         return fig_report
@@ -156,7 +153,11 @@ def classification_report_image(y_train,
     rvc_plot.savefig(IMAGE_RESULTS_PATH + 'rvc_classification_report.svg')
 
     lrc_plot = plot_classification_report(
-        y_train, y_test, y_train_preds_lr, y_test_preds_lr, 'Logistic Regression')
+        y_train,
+        y_test,
+        y_train_preds_lr,
+        y_test_preds_lr,
+        'Logistic Regression')
     lrc_plot.savefig(IMAGE_RESULTS_PATH + 'lr_classification_report.svg')
 
 
@@ -208,6 +209,7 @@ def train_models(X_train, X_test, y_train, y_test):
     output:
               None
     '''
+    IMAGE_RESULTS_PATH = './images/results/'
 
     # grid search
     rfc = RandomForestClassifier(random_state=42, verbose=True)
@@ -239,36 +241,64 @@ def train_models(X_train, X_test, y_train, y_test):
                                 y_test_preds_lr,
                                 y_test_preds_rf)
 
+    # save roc curves
+    lrc_plot = plot_roc_curve(lrc, X_test, y_test)
+    plt.figure(figsize=(15, 8))
+    ax = plt.gca()
+    rfc_disp = plot_roc_curve(
+        cv_rfc.best_estimator_,
+        X_test,
+        y_test,
+        ax=ax,
+        alpha=0.8)
+    lrc_plot.plot(ax=ax, alpha=0.8)
+    plt.tight_layout()
+    plt.savefig(IMAGE_RESULTS_PATH + 'rfc_lrc_roc_curves.svg')
+
+    # plot feature importances
+    feature_importance_plot(
+        cv_rfc.best_estimator_,
+        X_train,
+        IMAGE_RESULTS_PATH)
+
     # save best model
     joblib.dump(cv_rfc.best_estimator_, './models/rfc_model.pkl')
     joblib.dump(lrc, './models/logistic_model.pkl')
 
 
 if __name__ == '__main__':
-    df = import_data("./data/bank_data.csv")
-    perform_eda(df)
+    df_data = import_data("./data/bank_data.csv")
+    perform_eda(df_data)
     category_lst = ['Gender', 'Education_Level',
                     'Marital_Status', 'Income_Category', 'Card_Category']
-    df = encoder_helper(df, category_lst)
+    df_data = encoder_helper(df_data, category_lst)
 
-    X_train, X_test, y_train, y_test = perform_feature_engineering(
-        df)
+    keep_cols = [
+        'Customer_Age',
+        'Dependent_count',
+        'Months_on_book',
+        'Total_Relationship_Count',
+        'Months_Inactive_12_mon',
+        'Contacts_Count_12_mon',
+        'Credit_Limit',
+        'Total_Revolving_Bal',
+        'Avg_Open_To_Buy',
+        'Total_Amt_Chng_Q4_Q1',
+        'Total_Trans_Amt',
+        'Total_Trans_Ct',
+        'Total_Ct_Chng_Q4_Q1',
+        'Avg_Utilization_Ratio',
+        'Gender_Churn',
+        'Education_Level_Churn',
+        'Marital_Status_Churn',
+        'Income_Category_Churn',
+        'Card_Category_Churn',
+        'Churn']
 
-    train_models(X_train, X_test, y_train, y_test)
+    df_data_reduced = pd.DataFrame()
+    df_data_reduced[keep_cols] = df_data[keep_cols]
 
-    # load models
-    rfc_model = joblib.load('./models/rfc_model.pkl')
-    lr_model = joblib.load('./models/logistic_model.pkl')
+    X_train_fe, X_test_fe, y_train_fe, y_test_fe = perform_feature_engineering(
+        df_data_reduced)
 
-    keep_cols = ['Customer_Age', 'Dependent_count', 'Months_on_book',
-                 'Total_Relationship_Count', 'Months_Inactive_12_mon',
-                 'Contacts_Count_12_mon', 'Credit_Limit', 'Total_Revolving_Bal',
-                 'Avg_Open_To_Buy', 'Total_Amt_Chng_Q4_Q1', 'Total_Trans_Amt',
-                 'Total_Trans_Ct', 'Total_Ct_Chng_Q4_Q1', 'Avg_Utilization_Ratio',
-                 'Gender_Churn', 'Education_Level_Churn', 'Marital_Status_Churn',
-                 'Income_Category_Churn', 'Card_Category_Churn']
-
-    X_data = pd.DataFrame()
-    X_data[keep_cols] = df[keep_cols]
-
-    feature_importance_plot(rfc_model, X_data, './images/results/')
+    train_models(X_train_fe, X_test_fe, y_train_fe, y_test_fe)
